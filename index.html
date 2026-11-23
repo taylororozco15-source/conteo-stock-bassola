@@ -1,0 +1,648 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Carnicería · Conteo de Stock</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link href="https://fonts.googleapis.com/css2?family=Alfa+Slab+One&family=Work+Sans:wght@400;500;600;700&display=swap" rel="stylesheet" />
+<script src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.4.0/exceljs.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
+<style>
+:root{
+  --bg:#f3ece6; --card:#fffdfb; --text:#2b1a1a; --muted:#7a6660;
+  --red:#a3162a; --red-d:#7c0f1f; --kraft:#c8a273; --kraft-l:#efe0c8;
+  --border:#e4d6cb;
+  --ok-bg:#dcf0dc; --ok-text:#1f5a2b; --warn-bg:#fde9b8; --warn-text:#7a4a05; --bad-bg:#f9d4d4; --bad-text:#8e1020;
+}
+*{box-sizing:border-box}
+body{margin:0;font-family:"Work Sans",system-ui,sans-serif;background:var(--bg);color:var(--text);
+  background-image:radial-gradient(rgba(163,22,42,.05) 1px,transparent 1px);background-size:18px 18px}
+.awning{height:26px;background:repeating-linear-gradient(90deg,var(--red) 0 38px,#fff 38px 76px);
+  border-bottom:4px solid var(--red-d);
+  -webkit-mask:radial-gradient(circle 19px at 19px 100%,transparent 98%,#000) 0 0/38px 100%;mask:none;
+  box-shadow:0 4px 0 -1px rgba(0,0,0,.08)}
+.container{max-width:1260px;margin:0 auto;padding:22px 18px 40px}
+header{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:14px;margin-bottom:22px}
+.brand{display:flex;align-items:center;gap:14px}
+.logo{width:56px;height:56px;border-radius:50%;background:var(--red);display:grid;place-items:center;font-size:1.9rem;
+  border:3px solid #fff;box-shadow:0 0 0 3px var(--red),0 4px 10px rgba(124,15,31,.3)}
+h1{margin:0;font-family:"Alfa Slab One",Georgia,serif;font-weight:400;font-size:1.7rem;color:var(--red-d);letter-spacing:.01em}
+.subtitle{color:var(--muted);font-size:.9rem;margin-top:3px}
+.live-pill{display:inline-flex;align-items:center;gap:6px;font-size:.78rem;font-weight:600;padding:4px 10px;border-radius:999px;
+  background:#e8ddd3;color:#5a4640;margin-left:10px;vertical-align:middle}
+.live-pill.online{background:var(--ok-bg);color:var(--ok-text)}
+.dot{width:8px;height:8px;border-radius:50%;background:currentColor}
+.live-pill.online .dot{animation:pulso 1.6s ease-out infinite}
+@keyframes pulso{0%{box-shadow:0 0 0 0 rgba(31,90,43,.5)}100%{box-shadow:0 0 0 8px rgba(31,90,43,0)}}
+.tabs{display:flex;gap:6px;background:var(--kraft-l);padding:5px;border-radius:12px;border:1px solid var(--kraft)}
+.tab-btn{border:none;background:transparent;padding:10px 16px;border-radius:8px;font:inherit;font-weight:600;cursor:pointer;color:#6b5238}
+.tab-btn.active{background:var(--red);color:#fff;box-shadow:0 2px 6px rgba(124,15,31,.35)}
+.card{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:24px;box-shadow:0 6px 18px rgba(80,40,30,.08)}
+h2{font-family:"Alfa Slab One",Georgia,serif;font-weight:400;color:var(--text);font-size:1.3rem}
+.form-grid{display:grid;gap:16px;max-width:560px}
+label,.lbl{display:flex;flex-direction:column;gap:6px;font-weight:600;font-size:.92rem}
+input,select{font:inherit;padding:11px 13px;border-radius:10px;border:1.5px solid #d8c6b8;background:#fff;color:var(--text)}
+.input-sm{padding:6px 8px;border-radius:6px;border:1.5px solid #d8c6b8;font:inherit;font-size:.86rem;width:100%}
+.input-num{width:78px}
+input:focus,select:focus,.input-sm:focus,button:focus-visible{outline:3px solid #e9a3ad;border-color:var(--red)}
+#cantidad{font-size:2rem;font-weight:700;text-align:center;padding:12px}
+.chips{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px}
+.chip{border:2px dashed var(--kraft);background:var(--kraft-l);border-radius:12px;padding:12px 10px;cursor:pointer;
+  text-align:left;font:inherit;color:var(--text);transition:transform .12s}
+.chip:hover{transform:translateY(-2px)}
+.chip b{display:block;font-size:.95rem}
+.chip small{color:var(--muted);font-size:.74rem}
+.chip.sel{background:var(--red);border:2px solid var(--red-d);color:#fff}
+.chip.sel small{color:#f6c9cf}
+#productoSelect{display:none}
+.btn{font:inherit;padding:10px 16px;border-radius:10px;cursor:pointer;font-weight:600}
+.btn-primary{background:var(--red);color:#fff;border:none;font-size:1.05rem;padding:14px;box-shadow:0 4px 0 var(--red-d)}
+.btn-primary:hover{background:#b8182f}
+.btn-primary:active{transform:translateY(3px);box-shadow:0 1px 0 var(--red-d)}
+.btn-primary:disabled{opacity:.6}
+.btn-secondary{background:var(--kraft-l);color:#5b4128;border:1.5px solid var(--kraft)}
+.btn-secondary:hover{background:#e8d3b0}
+.btn-mini{padding:5px 10px;font-size:.78rem;border-radius:6px;border:1px solid #d8c6b8;background:#faf4ee;color:var(--text);font-weight:600;cursor:pointer;white-space:nowrap}
+.btn-mini:hover{background:#efe0d0}
+.btn-save{background:var(--red);color:#fff;border-color:var(--red)}
+.btn-save:hover{background:var(--red-d)}
+.btn-danger{color:var(--bad-text);border-color:#f0b8b8;background:#fff5f5}
+.btn-danger:hover{background:var(--bad-bg)}
+.msg{margin:0;padding:12px 14px;border-radius:10px;background:var(--ok-bg);color:var(--ok-text);font-size:.92rem}
+.msg-error{background:var(--bad-bg);color:var(--bad-text)}
+.toolbar{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:12px;margin-bottom:14px}
+.filters{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:18px}
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(175px,1fr));gap:12px;margin-bottom:20px}
+.kpi{background:var(--kraft-l);border:1px solid var(--kraft);border-left:6px solid var(--red);border-radius:10px;padding:12px 14px}
+.kpi-label{font-size:.8rem;color:#6b5238}
+.kpi-value{font-family:"Alfa Slab One",Georgia,serif;font-size:1.6rem;margin-top:2px;color:var(--red-d)}
+.table-wrap{overflow-x:auto;border:1px solid var(--border);border-radius:10px}
+table{width:100%;border-collapse:collapse;font-size:.88rem}
+th,td{text-align:left;padding:10px;border-bottom:1px solid var(--border);vertical-align:middle}
+th{background:var(--red-d);color:#fff;font-size:.78rem;white-space:nowrap;font-weight:600}
+tbody tr:nth-child(even){background:#fbf5f0}
+tbody tr:hover{background:#f6e8df}
+.badge{display:inline-block;padding:3px 9px;border-radius:999px;font-size:.78rem;font-weight:700;white-space:nowrap}
+.badge-ok{background:var(--ok-bg);color:var(--ok-text)}
+.badge-warn{background:var(--warn-bg);color:var(--warn-text)}
+.badge-bad{background:var(--bad-bg);color:var(--bad-text)}
+.acciones{display:flex;gap:5px}
+.empty-row{text-align:center;color:var(--muted);padding:26px}
+.hidden{display:none}
+@media (max-width:600px){h1{font-size:1.35rem}.card{padding:16px}}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+</style>
+</head>
+<body>
+<div class="awning"></div>
+<div class="container">
+  <header>
+    <div class="brand">
+      <div class="logo">🥩</div>
+      <div>
+        <div style="display:flex;align-items:center;flex-wrap:wrap">
+          <h1>Conteo de Stock</h1>
+          <span id="estadoSync" class="live-pill"><span class="dot"></span> Conectando...</span>
+        </div>
+        <div class="subtitle">Obrador y mostrador sincronizados en tiempo real</div>
+      </div>
+    </div>
+    <div class="tabs">
+      <button id="tabTrabajador" class="tab-btn active" onclick="cambiarVista('trabajador')">Trabajador</button>
+      <button id="tabEncargado" class="tab-btn" onclick="cambiarVista('encargado')">Encargado</button>
+      <button id="tabVinas" class="tab-btn" onclick="cambiarVista('vinas')">Viñas</button>
+    </div>
+  </header>
+
+  <section id="vistaTrabajador" class="card">
+    <h2 style="margin-top:0">Anotar conteo</h2>
+    <form id="formConteo" class="form-grid">
+      <label>Nombre del trabajador
+        <input id="trabajador" type="text" required placeholder="Ej. Laura Gómez" />
+      </label>
+      <div class="lbl">Producto
+        <div id="chips" class="chips"></div>
+        <select id="productoSelect"></select>
+      </div>
+      <div class="lbl">Producto viñas
+        <div id="chipsVinas" class="chips"></div>
+      </div>
+      <label>Cantidad contada
+        <input id="cantidad" type="number" min="0" required placeholder="0" inputmode="numeric" />
+      </label>
+      <label>Nota (opcional)
+        <input id="nota" type="text" placeholder="Ej. 2 piezas abiertas o dañadas" />
+      </label>
+      <button id="btnGuardarConteo" type="submit" class="btn btn-primary">Guardar conteo</button>
+      <p id="mensajeEstado" class="msg hidden"></p>
+    </form>
+  </section>
+
+  <section id="vistaEncargado" class="card hidden">
+    <div class="toolbar">
+      <div>
+        <h2 id="tituloPanel" style="margin:0">Conteos por mes, día y hora</h2>
+        <div class="subtitle">Se actualiza solo al llegar conteos. Puedes editar Teórico, Contado y Nota.</div>
+      </div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <button class="btn btn-secondary" onclick="cargarTodo()">Actualizar</button>
+        <button class="btn btn-primary" style="font-size:.95rem;padding:10px 16px" onclick="exportarExcel()">Descargar Excel</button>
+        <button class="btn btn-secondary" onclick="exportarCSV()">Exportar CSV</button>
+      </div>
+    </div>
+    <div class="filters">
+      <select id="filtroMes" onchange="renderEncargado()"><option value="">Todos los meses</option></select>
+      <select id="filtroDia" onchange="renderEncargado()"><option value="">Todos los días</option></select>
+      <select id="filtroTrabajador" onchange="renderEncargado()"><option value="">Todos los trabajadores</option></select>
+      <select id="filtroProducto" onchange="renderEncargado()"><option value="">Todas las piezas</option></select>
+      <button class="btn-mini" onclick="limpiarFiltros()">Limpiar filtros</button>
+    </div>
+    <div class="kpis">
+      <div class="kpi"><div class="kpi-label">Registros mostrados</div><div id="kpiRegistros" class="kpi-value">0</div></div>
+      <div class="kpi"><div class="kpi-label">Total teórico</div><div id="kpiTeorico" class="kpi-value">0</div></div>
+      <div class="kpi"><div class="kpi-label">Total contado</div><div id="kpiContado" class="kpi-value">0</div></div>
+      <div class="kpi"><div class="kpi-label">Con diferencia</div><div id="kpiDiferencias" class="kpi-value">0</div></div>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr>
+          <th>Mes</th><th>Día</th><th>Hora</th><th>Trabajador</th><th>Producto</th>
+          <th>Teórico</th><th>Contado</th><th>Diferencia</th><th>Nota</th><th>Acciones</th>
+        </tr></thead>
+        <tbody id="tablaConteos"></tbody>
+      </table>
+    </div>
+  </section>
+</div>
+
+<script>
+const SUPABASE_URL = "https://mnhbxgfqlnkbmthjwiof.supabase.co";
+const SUPABASE_ANON_KEY = "sb_publishable_hIJBSTXzvRpXqZur7ROg1g_NooX9ZV_";
+
+const PRODUCTOS_POR_DEFECTO = [
+  { id: "p1", sku: "CUL-001", nombre: "Culati", stock_teorico: 0 },
+  { id: "p2", sku: "CUI-002", nombre: "Culata cuixa", stock_teorico: 0 },
+  { id: "p3", sku: "FDP-003", nombre: "Filete de pobre", stock_teorico: 0 },
+  { id: "p4", sku: "CUA-004", nombre: "Cua", stock_teorico: 0 },
+  { id: "p5", sku: "FIL-005", nombre: "Filet", stock_teorico: 0 },
+  { id: "p6", sku: "ROD-006", nombre: "Rodo espatlla", stock_teorico: 0 }
+];
+
+// Productos de Viñas: ids que empiezan por "v". Edita nombres/SKU aquí si hace falta.
+const PRODUCTOS_VINAS = [
+  { id: "v1", sku: "VIN-001", nombre: "Culati", stock_teorico: 0 },
+  { id: "v2", sku: "VIN-002", nombre: "Culata cuixa", stock_teorico: 0 },
+  { id: "v3", sku: "VIN-003", nombre: "Filete de pobre", stock_teorico: 0 },
+  { id: "v4", sku: "VIN-004", nombre: "Cua", stock_teorico: 0 },
+  { id: "v5", sku: "VIN-005", nombre: "Filet", stock_teorico: 0 },
+  { id: "v6", sku: "VIN-006", nombre: "Rodo espatlla", stock_teorico: 0 }
+];
+const TODOS_POR_DEFECTO = [...PRODUCTOS_POR_DEFECTO, ...PRODUCTOS_VINAS];
+// Teórico por línea: si el conteo tiene su propio teórico se usa ese; si no, el del producto.
+const teoricoDe = (c, prod) => c.teorico ?? prod.stock_teorico ?? 0;
+const esVinas = (productoId) => String(productoId).startsWith("v");
+let vistaActual = "trabajador";
+
+const credencialesConfiguradas = !SUPABASE_URL.startsWith("TU_") && !SUPABASE_ANON_KEY.startsWith("TU_");
+const db = credencialesConfiguradas ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY) : null;
+
+let productosCache = [...TODOS_POR_DEFECTO];
+let conteosCache = [];
+let editandoId = null;
+
+function marcarEstadoSync(conectado, texto) {
+  const pill = document.getElementById("estadoSync");
+  pill.classList.toggle("online", conectado);
+  pill.innerHTML = `<span class="dot"></span> ${texto}`;
+}
+
+function obtenerFechaPartes(fecha = new Date()) {
+  const mesRaw = fecha.toLocaleDateString("es-ES", { month: "long", year: "numeric" });
+  return {
+    mes: mesRaw.charAt(0).toUpperCase() + mesRaw.slice(1),
+    dia: fecha.toLocaleDateString("es-ES"),
+    hora: fecha.toLocaleTimeString("es-ES")
+  };
+}
+
+function formatearDiferencia(diff) {
+  if (diff > 0) return { clase: "badge-warn", texto: `+${diff}` };
+  if (diff < 0) return { clase: "badge-bad", texto: `${diff}` };
+  return { clase: "badge-ok", texto: "0 (Cuadra)" };
+}
+
+function poblarProductos() {
+  const select = document.getElementById("productoSelect");
+  const actual = select.value;
+  const lista = productosCache.length > 0 ? productosCache : TODOS_POR_DEFECTO;
+  select.innerHTML = lista.map((p) => `<option value="${p.id}">[${p.sku}] ${p.nombre}</option>`).join("");
+  if (lista.some((p) => p.id === actual)) select.value = actual;
+  pintarChips();
+}
+
+function pintarChips() {
+  const sel = document.getElementById("productoSelect").value;
+  const chip = (p) => `<button type="button" class="chip ${p.id === sel ? "sel" : ""}" onclick="elegirProducto('${p.id}')"><b>🥩 ${p.nombre}</b><small>${p.sku}</small></button>`;
+  document.getElementById("chips").innerHTML = productosCache.filter((p) => !esVinas(p.id)).map(chip).join("");
+  document.getElementById("chipsVinas").innerHTML = productosCache.filter((p) => esVinas(p.id)).map(chip).join("");
+}
+
+function elegirProducto(id) {
+  document.getElementById("productoSelect").value = id;
+  pintarChips();
+  document.getElementById("cantidad").focus();
+}
+
+async function asegurarProductosEnSupabase() {
+  if (!db) return;
+  const { error } = await db.from("productos").upsert(TODOS_POR_DEFECTO, { onConflict: "id", ignoreDuplicates: true });
+  if (error) console.error("Error asegurando productos:", error);
+}
+
+async function cargarTodo() {
+  if (!db) {
+    marcarEstadoSync(false, "Falta configurar Supabase");
+    poblarProductos();
+    return;
+  }
+  await asegurarProductosEnSupabase();
+  const [resProd, resCont] = await Promise.all([
+    db.from("productos").select("id, sku, nombre, stock_teorico").order("id"),
+    db.from("conteos")
+      .select("id, producto_id, trabajador, cantidad_contada, nota, mes, dia, hora, creado_en, teorico")
+      .order("creado_en", { ascending: false })
+  ]);
+  if (resProd.error || resCont.error) {
+    marcarEstadoSync(false, "Error de conexión");
+    console.error(resProd.error || resCont.error);
+    return;
+  }
+  productosCache = resProd.data && resProd.data.length > 0 ? resProd.data : [...TODOS_POR_DEFECTO];
+  conteosCache = resCont.data || [];
+  poblarProductos();
+  actualizarFiltros();
+  renderEncargado();
+}
+
+function iniciarRealtime() {
+  if (!db) return;
+  db.channel("stock-tiempo-real")
+    .on("postgres_changes", { event: "*", schema: "public", table: "conteos" }, () => cargarTodo())
+    .on("postgres_changes", { event: "*", schema: "public", table: "productos" }, () => cargarTodo())
+    .subscribe((status) => {
+      if (status === "SUBSCRIBED") marcarEstadoSync(true, "En vivo");
+      else if (status === "CHANNEL_ERROR" || status === "TIMED_OUT") marcarEstadoSync(false, "Reconectando...");
+    });
+}
+
+function cambiarVista(vista) {
+  const esTrabajador = vista === "trabajador";
+  document.getElementById("vistaTrabajador").classList.toggle("hidden", !esTrabajador);
+  document.getElementById("vistaEncargado").classList.toggle("hidden", esTrabajador);
+  document.getElementById("tabTrabajador").classList.toggle("active", esTrabajador);
+  document.getElementById("tabEncargado").classList.toggle("active", vista === "encargado");
+  document.getElementById("tabVinas").classList.toggle("active", vista === "vinas");
+  document.getElementById("tituloPanel").textContent =
+    vista === "vinas" ? "Viñas · Conteos por mes, día y hora" : "Conteos por mes, día y hora";
+  editandoId = null;
+  vistaActual = vista;
+  if (!esTrabajador) { actualizarFiltros(); renderEncargado(); cargarTodo(); }
+}
+
+function llenarFiltro(id, textoTodos, valores) {
+  const sel = document.getElementById(id);
+  const act = sel.value;
+  sel.innerHTML = `<option value="">${textoTodos}</option>` + valores.map((v) => `<option value="${v}">${v}</option>`).join("");
+  if (valores.includes(act)) sel.value = act;
+}
+
+function conteosDeVista() {
+  const v = vistaActual === "vinas";
+  return conteosCache.filter((c) => esVinas(c.producto_id) === v);
+}
+
+function actualizarFiltros() {
+  const unicos = (k) => [...new Set(conteosDeVista().map((c) => c[k]).filter(Boolean))];
+  llenarFiltro("filtroMes", "Todos los meses", unicos("mes"));
+  llenarFiltro("filtroDia", "Todos los días", unicos("dia"));
+  llenarFiltro("filtroTrabajador", "Todos los trabajadores", unicos("trabajador"));
+  const selP = document.getElementById("filtroProducto");
+  const actP = selP.value;
+  const piezas = productosCache.filter((p) => esVinas(p.id) === (vistaActual === "vinas"));
+  selP.innerHTML = `<option value="">Todas las piezas</option>` +
+    piezas.map((p) => `<option value="${p.id}">${p.nombre} (${p.sku})</option>`).join("");
+  if (piezas.some((p) => p.id === actP)) selP.value = actP;
+}
+
+function limpiarFiltros() {
+  ["filtroMes", "filtroDia", "filtroTrabajador", "filtroProducto"].forEach((id) => (document.getElementById(id).value = ""));
+  renderEncargado();
+}
+
+function empezarEdicion(id) { editandoId = id; renderEncargado(); }
+function cancelarEdicion() { editandoId = null; renderEncargado(); }
+
+async function guardarEdicion(id, productoId) {
+  if (!db) return;
+  const num = (el) => Math.max(0, Number(document.getElementById(el).value) || 0);
+  const nuevoTeorico = num(`edit-teorico-${id}`);
+  const nuevoContado = num(`edit-contado-${id}`);
+  const nuevaNota = document.getElementById(`edit-nota-${id}`).value.trim();
+  const { error } = await db.from("conteos")
+    .update({ teorico: nuevoTeorico, cantidad_contada: nuevoContado, nota: nuevaNota })
+    .eq("id", id);
+  if (error) { alert("No se pudieron guardar los cambios: " + error.message); return; }
+  editandoId = null;
+  await cargarTodo();
+}
+
+async function borrarConteo(id) {
+  if (!db) return;
+  if (!confirm("¿Eliminar este registro de conteo?")) return;
+  const { error } = await db.from("conteos").delete().eq("id", id);
+  if (error) { alert("No se pudo eliminar el registro."); return; }
+  if (editandoId === id) editandoId = null;
+  await cargarTodo();
+}
+
+function actualizarDiferenciaEnVivo(id) {
+  const num = (el) => Math.max(0, Number(document.getElementById(el).value) || 0);
+  const info = formatearDiferencia(num(`edit-contado-${id}`) - num(`edit-teorico-${id}`));
+  const el = document.getElementById(`edit-diff-${id}`);
+  el.className = `badge ${info.clase}`;
+  el.textContent = info.texto;
+}
+
+function obtenerFiltrados() {
+  const mes = document.getElementById("filtroMes").value;
+  const dia = document.getElementById("filtroDia").value;
+  const trab = document.getElementById("filtroTrabajador").value;
+  const prodF = document.getElementById("filtroProducto").value;
+  return conteosDeVista().filter((c) => (!mes || c.mes === mes) && (!dia || c.dia === dia) && (!trab || c.trabajador === trab) && (!prodF || c.producto_id === prodF));
+}
+
+function renderEncargado() {
+  const filtrados = obtenerFiltrados();
+  const tbody = document.getElementById("tablaConteos");
+  let totalTeorico = 0, totalContado = 0, totalConDiferencia = 0;
+
+  if (filtrados.length === 0) {
+    tbody.innerHTML = `<tr><td colspan="10" class="empty-row">Aún no hay conteos. Cuando el equipo los envíe, aparecerán aquí.</td></tr>`;
+  } else {
+    tbody.innerHTML = filtrados.map((c) => {
+      const prod = productosCache.find((p) => p.id === c.producto_id) || { id: c.producto_id, sku: "-", nombre: "Producto", stock_teorico: 0 };
+      const teorico = teoricoDe(c, prod);
+      const diff = c.cantidad_contada - teorico;
+      totalTeorico += teorico;
+      totalContado += c.cantidad_contada;
+      if (diff !== 0) totalConDiferencia++;
+      const b = formatearDiferencia(diff);
+      const celdas = `<td>${c.mes || "—"}</td><td>${c.dia || "—"}</td><td>${c.hora || "—"}</td><td>${c.trabajador}</td><td><strong>${prod.sku}</strong> · ${prod.nombre}</td>`;
+
+      if (editandoId === c.id) {
+        return `<tr>${celdas}
+          <td><input id="edit-teorico-${c.id}" type="number" min="0" class="input-sm input-num" value="${teorico}" oninput="actualizarDiferenciaEnVivo('${c.id}')" /></td>
+          <td><input id="edit-contado-${c.id}" type="number" min="0" class="input-sm input-num" value="${c.cantidad_contada}" oninput="actualizarDiferenciaEnVivo('${c.id}')" /></td>
+          <td><span id="edit-diff-${c.id}" class="badge ${b.clase}">${b.texto}</span></td>
+          <td><input id="edit-nota-${c.id}" type="text" class="input-sm" value="${(c.nota || "").replace(/"/g, "&quot;")}" placeholder="Añadir nota..." /></td>
+          <td><div class="acciones">
+            <button class="btn-mini btn-save" onclick="guardarEdicion('${c.id}', '${prod.id}')">Guardar</button>
+            <button class="btn-mini" onclick="cancelarEdicion()">Cancelar</button>
+          </div></td></tr>`;
+      }
+      return `<tr>${celdas}
+        <td>${teorico}</td>
+        <td><strong>${c.cantidad_contada}</strong></td>
+        <td><span class="badge ${b.clase}">${b.texto}</span></td>
+        <td>${c.nota || "—"}</td>
+        <td><div class="acciones">
+          <button class="btn-mini" onclick="empezarEdicion('${c.id}')">Editar</button>
+          <button class="btn-mini btn-danger" onclick="borrarConteo('${c.id}')">Borrar</button>
+        </div></td></tr>`;
+    }).join("");
+  }
+
+  document.getElementById("kpiRegistros").textContent = filtrados.length;
+  document.getElementById("kpiTeorico").textContent = totalTeorico;
+  document.getElementById("kpiContado").textContent = totalContado;
+  document.getElementById("kpiDiferencias").textContent = totalConDiferencia;
+}
+
+async function exportarExcel() {
+  try {
+    await generarExcel();
+  } catch (err) {
+    console.error(err);
+    alert("No se pudo crear el Excel: " + (err && err.message ? err.message : err) + "\n\nPuedes usar 'Exportar CSV', que también abre en Excel.");
+  }
+}
+
+async function generarExcel() {
+  if (typeof ExcelJS === "undefined") { alert("No se pudo cargar la librería de Excel. Comprueba tu conexión a internet."); return; }
+  const filtrados = obtenerFiltrados();
+  if (!filtrados.length) { alert("No hay registros para exportar."); return; }
+
+  const nombreVista = vistaActual === "vinas" ? "Viñas" : "Encargado";
+  const wb = new ExcelJS.Workbook();
+  wb.creator = "Conteo de Stock";
+  const RED = "FFA3162A", KRAFT = "FFEFE0C8";
+  const relleno = (argb) => ({ type: "pattern", pattern: "solid", fgColor: { argb }, bgColor: { argb } });
+  const prodDe = (c) => productosCache.find((p) => p.id === c.producto_id) || { sku: "-", nombre: "Producto", stock_teorico: 0 };
+
+  function nuevaHoja(nombre, columnas) {
+    const ws = wb.addWorksheet(nombre);
+    ws.columns = columnas.map(([header, key, width]) => ({ header, key, width }));
+    const r = ws.getRow(1);
+    r.height = 24;
+    r.eachCell((c) => {
+      c.font = { bold: true, color: { argb: "FFFFFFFF" } };
+      c.fill = relleno(RED);
+      c.alignment = { vertical: "middle", horizontal: "center", wrapText: true };
+    });
+    ws.views = [{ state: "frozen", ySplit: 1 }];
+    return ws;
+  }
+  function bordes(ws) {
+    ws.eachRow((row) => row.eachCell((c) => {
+      c.border = { top: { style: "thin", color: { argb: "FFE4D6CB" } }, bottom: { style: "thin", color: { argb: "FFE4D6CB" } }, left: { style: "thin", color: { argb: "FFE4D6CB" } }, right: { style: "thin", color: { argb: "FFE4D6CB" } } };
+    }));
+  }
+  const estadoDe = (d) => (d > 0 ? "Sobra" : d < 0 ? "Falta" : "Cuadra");
+
+  // ---- Hoja 1: Detalle ----
+  const det = nuevaHoja("Detalle", [
+    ["Mes", "mes", 18], ["Día", "dia", 12], ["Hora", "hora", 11], ["Trabajador", "trab", 20],
+    ["SKU", "sku", 12], ["Pieza", "pieza", 22], ["Teórico", "teo", 10], ["Contado", "con", 10],
+    ["Diferencia", "dif", 12], ["Estado", "est", 11], ["Nota", "nota", 36]
+  ]);
+  filtrados.forEach((c) => {
+    const prod = prodDe(c);
+    const teo = teoricoDe(c, prod);
+    const d = c.cantidad_contada - teo;
+    const row = det.addRow({ mes: c.mes, dia: c.dia, hora: c.hora, trab: c.trabajador, sku: prod.sku, pieza: prod.nombre, teo, con: c.cantidad_contada, nota: c.nota || "" });
+    const n = row.number;
+    row.getCell("dif").value = { formula: `H${n}-G${n}`, result: d };
+    row.getCell("est").value = { formula: `IF(I${n}>0,"Sobra",IF(I${n}<0,"Falta","Cuadra"))`, result: estadoDe(d) };
+    row.getCell("est").alignment = { horizontal: "center" };
+  });
+  const ultima = det.rowCount;
+  det.autoFilter = { from: { row: 1, column: 1 }, to: { row: ultima, column: 11 } };
+  const fx = (argb) => ({ fill: { type: "pattern", pattern: "solid", bgColor: { argb } } });
+  det.addConditionalFormatting({ ref: `I2:J${ultima}`, rules: [
+    { type: "expression", formulae: ["$I2>0"], style: fx("FFFDE9B8") },
+    { type: "expression", formulae: ["$I2<0"], style: fx("FFF9D4D4") },
+    { type: "expression", formulae: ["$I2=0"], style: fx("FFDCF0DC") }
+  ] });
+  bordes(det);
+  const tot = det.addRow({ mes: "TOTAL" });
+  tot.getCell("teo").value = { formula: `SUM(G2:G${ultima})` };
+  tot.getCell("con").value = { formula: `SUM(H2:H${ultima})` };
+  tot.getCell("dif").value = { formula: `SUM(I2:I${ultima})` };
+  tot.eachCell({ includeEmpty: true }, (c) => { c.font = { bold: true }; c.fill = relleno(KRAFT); });
+
+  // ---- Hoja 2: Resumen por pieza (último conteo de cada pieza) ----
+  const porPieza = new Map();
+  filtrados.forEach((c) => {
+    const prod = prodDe(c);
+    if (!porPieza.has(prod.id)) porPieza.set(prod.id, { prod, ultimo: c, n: 0, total: 0, conDif: 0 });
+    const g = porPieza.get(prod.id);
+    g.n++; g.total += c.cantidad_contada;
+    if (c.cantidad_contada - teoricoDe(c, prod) !== 0) g.conDif++;
+  });
+  const rp = nuevaHoja("Resumen por pieza", [
+    ["SKU", "sku", 12], ["Pieza", "pieza", 22], ["Nº conteos", "n", 11], ["Unidades contadas (suma)", "tot", 16],
+    ["Último conteo", "ult", 13], ["Fecha último", "fec", 20], ["Teórico", "teo", 10], ["Diferencia (último)", "dif", 14],
+    ["Estado", "est", 11], ["Conteos con diferencia", "cd", 14]
+  ]);
+  [...porPieza.values()].sort((a, b) => a.prod.nombre.localeCompare(b.prod.nombre)).forEach((g) => {
+    const teo = teoricoDe(g.ultimo, g.prod);
+    const d = g.ultimo.cantidad_contada - teo;
+    const row = rp.addRow({ sku: g.prod.sku, pieza: g.prod.nombre, n: g.n, tot: g.total, ult: g.ultimo.cantidad_contada, fec: `${g.ultimo.dia} ${g.ultimo.hora}`, teo, cd: g.conDif });
+    const k = row.number;
+    row.getCell("dif").value = { formula: `E${k}-G${k}`, result: d };
+    row.getCell("est").value = { formula: `IF(H${k}>0,"Sobra",IF(H${k}<0,"Falta","Cuadra"))`, result: estadoDe(d) };
+    row.getCell("est").alignment = { horizontal: "center" };
+  });
+  rp.addConditionalFormatting({ ref: `H2:I${rp.rowCount}`, rules: [
+    { type: "expression", formulae: ["$H2>0"], style: fx("FFFDE9B8") },
+    { type: "expression", formulae: ["$H2<0"], style: fx("FFF9D4D4") },
+    { type: "expression", formulae: ["$H2=0"], style: fx("FFDCF0DC") }
+  ] });
+  bordes(rp);
+
+  // ---- Hoja 3 y 4: por trabajador y por día ----
+  function resumen(nombre, etiqueta, clave) {
+    const ws = nuevaHoja(nombre, [[etiqueta, "k", 24], ["Nº conteos", "n", 12], ["Unidades contadas", "u", 16], ["Conteos con diferencia", "d", 16]]);
+    const m = new Map();
+    filtrados.forEach((c) => {
+      const k = c[clave] || "—";
+      if (!m.has(k)) m.set(k, { n: 0, u: 0, d: 0 });
+      const g = m.get(k);
+      g.n++; g.u += c.cantidad_contada;
+      if (c.cantidad_contada - teoricoDe(c, prodDe(c)) !== 0) g.d++;
+    });
+    [...m.entries()].forEach(([k, g]) => ws.addRow({ k, n: g.n, u: g.u, d: g.d }));
+    bordes(ws);
+  }
+  resumen("Por trabajador", "Trabajador", "trabajador");
+  resumen("Por día", "Día", "dia");
+
+  const buf = await wb.xlsx.writeBuffer();
+  const nombreArchivo = `conteo-stock-${nombreVista.toLowerCase()}-${new Date().toISOString().slice(0, 10)}.xlsx`;
+  const tipo = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
+  const blob = new Blob([buf], { type: tipo });
+
+  // En móvil: abrir el menú "Compartir" (Excel, Drive, WhatsApp, guardar en archivos...)
+  try {
+    const archivo = new File([blob], nombreArchivo, { type: tipo });
+    if (navigator.canShare && navigator.canShare({ files: [archivo] })) {
+      await navigator.share({ files: [archivo], title: nombreArchivo });
+      return;
+    }
+  } catch (err) {
+    if (err && err.name === "AbortError") return;
+  }
+
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = nombreArchivo;
+  a.style.display = "none";
+  document.body.appendChild(a);
+  a.click();
+  setTimeout(() => { a.remove(); URL.revokeObjectURL(url); }, 1500);
+}
+
+function exportarCSV() {
+  const filtrados = obtenerFiltrados();
+  const encabezados = ["Mes","Dia","Hora","Trabajador","SKU","Producto","Teorico","Contado","Diferencia","Nota"];
+  const escapar = (val) => `"${String(val ?? "").replace(/"/g, '""')}"`;
+  const filas = filtrados.map((c) => {
+    const prod = productosCache.find((p) => p.id === c.producto_id) || { sku: "-", nombre: "Producto", stock_teorico: 0 };
+    const teorico = teoricoDe(c, prod);
+    return [c.mes, c.dia, c.hora, c.trabajador, prod.sku, prod.nombre, teorico, c.cantidad_contada, c.cantidad_contada - teorico, c.nota]
+      .map(escapar).join(";");
+  });
+  const csv = "\uFEFF" + [encabezados.map(escapar).join(";"), ...filas].join("\n");
+  const url = URL.createObjectURL(new Blob([csv], { type: "text/csv;charset=utf-8;" }));
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = "conteo-stock-online.csv";
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+document.getElementById("formConteo").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const msg = document.getElementById("mensajeEstado");
+  const btn = document.getElementById("btnGuardarConteo");
+
+  if (!db) {
+    msg.textContent = "Configura primero SUPABASE_URL y SUPABASE_ANON_KEY en el archivo HTML.";
+    msg.className = "msg msg-error";
+    return;
+  }
+
+  const trabajador = document.getElementById("trabajador").value.trim();
+  const productoId = document.getElementById("productoSelect").value;
+  const cantidadContada = Math.max(0, Number(document.getElementById("cantidad").value));
+  const nota = document.getElementById("nota").value.trim();
+  const { mes, dia, hora } = obtenerFechaPartes(new Date());
+
+  btn.disabled = true;
+  btn.textContent = "Enviando...";
+  const prodSel = productosCache.find((p) => p.id === productoId);
+  const { error } = await db.from("conteos").insert([{
+    id: "c_" + Date.now() + "_" + Math.random().toString(36).slice(2, 6),
+    producto_id: productoId, trabajador, cantidad_contada: cantidadContada, nota, mes, dia, hora,
+    teorico: prodSel ? (prodSel.stock_teorico ?? 0) : 0
+  }]);
+  btn.disabled = false;
+  btn.textContent = "Guardar conteo";
+
+  if (error) {
+    msg.textContent = "No se pudo enviar el conteo: " + error.message;
+    msg.className = "msg msg-error";
+    return;
+  }
+  document.getElementById("cantidad").value = "";
+  document.getElementById("nota").value = "";
+  msg.textContent = `Conteo guardado: ${cantidadContada} uds. el ${dia} a las ${hora}.`;
+  msg.className = "msg";
+});
+
+poblarProductos();
+
+if (!credencialesConfiguradas) {
+  marcarEstadoSync(false, "Pendiente de claves");
+  const msg = document.getElementById("mensajeEstado");
+  msg.textContent = "Abre el HTML con el Bloc de notas y reemplaza TU_SUPABASE_URL y TU_SUPABASE_ANON_KEY por las claves de tu proyecto Supabase.";
+  msg.className = "msg msg-error";
+} else {
+  cargarTodo();
+  iniciarRealtime();
+}
+</script>
+</body>
+</html>
